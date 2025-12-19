@@ -113,7 +113,6 @@ int main(int argc, char *argv[]) {
     
     Particle *h_particles = (Particle *)malloc(n * sizeof(Particle));
 
-    // Читаем данные частиц: масса x y z vx vy vz
     for (int i = 0; i < n; i++) {
         double mass, x, y, z, vx, vy, vz;
         fscanf(fp, "%lf %lf %lf %lf %lf %lf %lf", &mass, &x, &y, &z, &vx, &vy, &vz);
@@ -127,7 +126,6 @@ int main(int argc, char *argv[]) {
     }
     fclose(fp);
     
-    // Выделяем память на GPU
     Particle *d_particles;
     float *d_Fx, *d_Fy, *d_Fz;
     
@@ -136,10 +134,8 @@ int main(int argc, char *argv[]) {
     cudaMalloc(&d_Fy, n * sizeof(float));
     cudaMalloc(&d_Fz, n * sizeof(float));
     
-    // Копируем начальные данные на GPU
     cudaMemcpy(d_particles, h_particles, n * sizeof(Particle), cudaMemcpyHostToDevice);
     
-    // Конфигурация запуска ядер
     int numBlocks;
     if (num_blocks_param > 0) {
         numBlocks = num_blocks_param;
@@ -152,16 +148,12 @@ int main(int argc, char *argv[]) {
     float t = 0.0f;
     int step = 0;
     
-    // Замер времени с использованием timer.h
     double start_time, end_time;
     GET_TIME(start_time);
     
-    // Основной цикл симуляции
     while (t <= t_end) {
-        // Вычисляем силы на GPU
         compute_forces_kernel<<<numBlocks, block_size, sharedMemSize>>>(d_particles, d_Fx, d_Fy, d_Fz, n);
         
-        // Интегрируем методом Эйлера на GPU
         integrate_euler_kernel<<<numBlocks, block_size>>>(d_particles, d_Fx, d_Fy, d_Fz, n, dt);
         
         t += dt;
@@ -171,13 +163,10 @@ int main(int argc, char *argv[]) {
     cudaDeviceSynchronize();
     GET_TIME(end_time);
     
-    // Вывод: время, частицы, total_steps, num_blocks, threads
     printf("%f,%d,%d,%d,%d\n", end_time - start_time, n, step, numBlocks, total_threads);
     
-    // Копируем финальные данные только один раз в конце
     cudaMemcpy(h_particles, d_particles, n * sizeof(Particle), cudaMemcpyDeviceToHost);
     
-    // Записываем только финальное состояние (формат: t, x1, y1, z1, x2, y2, z2, ...)
     FILE *out = fopen(output_file, "w");
     fprintf(out, "%f", t_end);
     for (int i = 0; i < n; i++) {

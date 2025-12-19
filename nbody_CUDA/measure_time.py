@@ -8,20 +8,19 @@ import random
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Run CUDA N-body simulation benchmarks.")
+    parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--executable", default="./data", help="Path to CUDA executable (default: ./data)"
+        "--executable", default="./data"
     )
-    parser.add_argument("--retries", type=int, default=3, help="Number of retries for averaging")
-    parser.add_argument("--output", default="stats.csv", help="Output CSV file for stats")
-    parser.add_argument("--t_end", type=float, default=10.0, help="Simulation end time")
-    parser.add_argument("--dt", type=float, default=0.01, help="Time step")
+    parser.add_argument("--retries", type=int, default=3)
+    parser.add_argument("--output", default="stats.csv")
+    parser.add_argument("--t_end", type=float, default=10.0)
+    parser.add_argument("--dt", type=float, default=0.01)
 
     return parser.parse_args()
 
 
 def run_single(executable, t_end, input_file, dt, block_size, num_blocks=0):
-    """Запускает программу один раз и возвращает результаты"""
     cmd = [executable, str(t_end), input_file, "/dev/null", str(dt), str(block_size)]
     if num_blocks > 0:
         cmd.append(str(num_blocks))
@@ -30,8 +29,7 @@ def run_single(executable, t_end, input_file, dt, block_size, num_blocks=0):
     stdout = result.stdout.strip()
     
     if stdout:
-        # Формат вывода: время,частицы,total_steps,num_blocks,threads
-        parts = stdout.split(",")
+        parts = stdout.split(",")   
         if len(parts) >= 5:
             return {
                 "time": float(parts[0]),
@@ -44,7 +42,6 @@ def run_single(executable, t_end, input_file, dt, block_size, num_blocks=0):
 
 
 def run_benchmark(executable, t_end, input_file, dt, block_size, num_blocks, retries):
-    """Запускает бенчмарк несколько раз и возвращает среднее время"""
     times = []
     last_result = None
     
@@ -63,11 +60,9 @@ def run_benchmark(executable, t_end, input_file, dt, block_size, num_blocks, ret
 
 
 def draw_graphs(output):
-    """Строит графики по результатам бенчмарков"""
     df = pd.read_csv(output)
     
-    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
-    axes = axes.flatten()
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
     fig.suptitle("CUDA N-body Simulation: Задача N тел", fontsize=14)
 
     # График 1: Время от числа частиц
@@ -97,18 +92,8 @@ def draw_graphs(output):
         axes[2].set_title("Время выполнения от num_blocks (N=5000)")
         axes[2].set_xlabel("Number of blocks")
         axes[2].set_ylabel("Время, с")
+        axes[2].set_ylim(0, df_blocks["time"].max() * 1.1)  # Ось Y начинается с 0
         axes[2].grid(True, which="both", linestyle="--", alpha=0.7)
-
-    # График 4: Ускорение от числа потоков
-    df_speedup = df[df["experiment"] == "block_size"].copy()
-    if not df_speedup.empty:
-        base_time = df_speedup["time"].max()
-        df_speedup["speedup"] = base_time / df_speedup["time"]
-        axes[3].plot(df_speedup["threads"], df_speedup["speedup"], "o-", linewidth=2, markersize=8, color="red")
-        axes[3].set_title("Ускорение от числа потоков")
-        axes[3].set_xlabel("Total threads")
-        axes[3].set_ylabel("Ускорение")
-        axes[3].grid(True, which="both", linestyle="--", alpha=0.7)
 
     plt.tight_layout()
     output_file = output[:output.find('.')] + "_graph.png"
@@ -116,17 +101,13 @@ def draw_graphs(output):
     print(f"Графики сохранены в {output_file}")
 
 
-def cuda_task(args):
-    """Запускает все эксперименты для CUDA N-body"""
-    
-    # Параметры экспериментов
+def cuda_task(args):    
     particles_list = [100, 500, 1000, 2000, 5000, 10000]
-    block_sizes = [32, 64, 128, 256, 512, 1024]
+    block_sizes = [1, 32, 64, 128, 256, 512, 1024]
     num_blocks_list = [1, 2, 4, 8, 16, 32, 64, 128]
     
     results = []
     
-    # Эксперимент 1: Зависимость от числа частиц
     print("\n=== Эксперимент 1: Зависимость от числа частиц ===")
     for n in particles_list:
         input_file = f"test_input_{n}.txt"
@@ -151,7 +132,6 @@ def cuda_task(args):
         else:
             print("ОШИБКА")
     
-    # Эксперимент 2: Зависимость от block_size (N=5000)
     print("\n=== Эксперимент 2: Зависимость от block_size (N=5000) ===")
     n = 5000
     input_file = f"test_input_{n}.txt"
@@ -178,7 +158,6 @@ def cuda_task(args):
         else:
             print("ОШИБКА")
     
-    # Эксперимент 3: Зависимость от num_blocks (N=5000, block_size=256)
     print("\n=== Эксперимент 3: Зависимость от num_blocks (N=5000) ===")
     
     for num_blocks in num_blocks_list:
@@ -203,13 +182,11 @@ def cuda_task(args):
         else:
             print("ОШИБКА")
     
-    # Сохраняем результаты
     df = pd.DataFrame(results)
     df.to_csv(args.output, index=False)
-    print(f"\nРезультаты сохранены в {args.output}")
+    print(f"\Результаты сохранены в {args.output}")
     print(df.to_string())
     
-    # Строим графики
     draw_graphs(args.output)
 
 
