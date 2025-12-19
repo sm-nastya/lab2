@@ -124,7 +124,7 @@ int main(int argc, char *argv[]) {
     FILE *out = fopen(output_file, "w");
     fprintf(out, "%f", t_end);
     for (int i = 0; i < n; i++) {
-        fprintf(out, ",%f,%f,%f", particles[i].x, particles[i].y, particles[i].z);
+        fprintf(out, ",%f,%f", particles[i].x, particles[i].y);
     }
     fprintf(out, "\n");
     fclose(out);
