@@ -241,7 +241,7 @@ python run_tests_and_plot.py
 
 ### Графики
 
-![alt text](rwlock\rwlock_comparison.png)
+![alt text](rwlock/rwlock_comparison.png)
 
 ## Особенности реализации
 
